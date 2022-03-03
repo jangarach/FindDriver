@@ -7,7 +7,6 @@ namespace FindDriver.Api.Model.DAL.Repositories
 {
     public interface ICityRepository : IRepository<City>
     {
-        Task<List<City>> FindAllAsync(List<int> keyIds);
     }
     public class CityRepository : Repository<City>, ICityRepository
     {
@@ -15,10 +14,6 @@ namespace FindDriver.Api.Model.DAL.Repositories
             :base(dbContext)
         {
 
-        }
-        public async Task<List<City>> FindAllAsync(List<int> keyIds)
-        {
-            return await Entities.Where(e => keyIds.Contains(e.Id)).ToListAsync();
         }
     }
 }

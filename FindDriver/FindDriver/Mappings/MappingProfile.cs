@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using FindDriver.Api.Model.DAL.DTO;
-using FindDriver.Api.View;
+using FindDriver.Api.Model.DAL.UI;
 
 namespace FindDriver.Api.Mappings
 {

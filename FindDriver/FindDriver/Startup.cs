@@ -3,7 +3,13 @@ using FindDriver.Api.Mappings;
 using FindDriver.Api.Model.DAL.Repositories;
 using FindDriver.Api.Model.Services;
 using FindDriver.Model;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Identity;
+using System.Reflection;
+using System.Text;
 
 namespace FindDriver
 {
@@ -16,6 +22,55 @@ namespace FindDriver
         public IConfigurationRoot Configuration { get; }
         public override void ConfigureServices(IServiceCollection services)
         {
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        // укзывает, будет ли валидироваться издатель при валидации токена
+                        ValidateIssuer = true,
+                        // строка, представляющая издателя
+                        ValidIssuer = Configuration["Jwt:Issuer"],
+
+                        // будет ли валидироваться потребитель токена
+                        ValidateAudience = true,
+                        // установка потребителя токена
+                        ValidAudience = Configuration["Jwt:Audience"],
+
+                        // будет ли валидироваться время существования
+                        ValidateLifetime = true,
+
+                        // установка ключа безопасности
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration["Jwt:key"])),
+                        // валидация ключа безопасности
+                        ValidateIssuerSigningKey = true
+                    };
+                })
+                .AddCookie(options =>
+                {
+                    options.Events.OnRedirectToLogin = options.Events.OnRedirectToAccessDenied = context =>
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return Task.CompletedTask;
+                    };
+                })
+                .AddGoogle(options =>
+                {
+                    options.ClientId = Configuration["Authentication:Google:ClientId"];
+                    options.ClientSecret = Configuration["Authentication:Google:ClientSecret"];
+                    options.Scope.Add("profile");
+                    options.Events.OnCreatingTicket = (context) =>
+                    {
+                        return Task.CompletedTask;
+                    };
+                    options.SaveTokens = true; 
+                });
+
             services.AddControllers();
 
             //Mapping
@@ -28,16 +83,48 @@ namespace FindDriver
             services.AddSingleton(mapper);
 
             services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
-            services.AddScoped<DbContext, ApplicationDbContext>();
+            services.AddTransient<DbContext, ApplicationDbContext>();
             AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 
             RegisterServices(services);
-            
+
             // Add services to the container.
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             services.AddEndpointsApiExplorer();
-            services.AddSwaggerGen();
+            services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new OpenApiInfo()
+                {
+                    Title = "FindDriver",
+                    Version = "v1",
+                });
+                options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, new OpenApiSecurityScheme()
+                {
+                    In = ParameterLocation.Header,
+                    Description = "Input Bearer token",
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.ApiKey,
+                    Scheme = JwtBearerDefaults.AuthenticationScheme
+                });
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement()
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = JwtBearerDefaults.AuthenticationScheme
+                            },
+                            Scheme = JwtBearerDefaults.AuthenticationScheme,
+                            Name = JwtBearerDefaults.AuthenticationScheme,
+                            In = ParameterLocation.Header,
+                        },
+                        new List<string>()
+                    }
+                });
+            });
         }
         public override void Configure(IApplicationBuilder app)
         {
@@ -47,14 +134,25 @@ namespace FindDriver
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-
             app.UseHttpsRedirection();
 
             app.UseRouting();
+
+            app.UseAuthentication();
+            app.UseAuthorization();
+
+            //custom uri
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllerRoute(name: "default", pattern: "{controller=Login}/{action=Index}/{id?}");
+                endpoints.MapControllerRoute(name: "custom", pattern: "{controller=Login}/{action=Index}/{id?}");
             });
+
+
+            //default uri
+            //app.UseEndpoints(endpoints =>
+            //{
+            //    endpoints.MapControllerRoute(name: "default", pattern: "{controller=Login}/{action=Index}/{id?}");
+            //});
         }
 
         private void RegisterServices(IServiceCollection services)
@@ -62,13 +160,14 @@ namespace FindDriver
             RegisterRepositories(services);
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IOrderService, OrderService>();
-            services.AddScoped<ICityService, CityService>();
+            services.AddScoped<IOrderReferencesService, OrderReferencesService>();
         }
 
         private void RegisterRepositories(IServiceCollection services)
         {
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IOrderRepository, OrderRepository>();
+            services.AddScoped<IOrderTypeRepository, OrderTypeRepository>();
             services.AddScoped<ICityRepository, CityRepository>();
         }
     }

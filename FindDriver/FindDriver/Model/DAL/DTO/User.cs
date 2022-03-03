@@ -10,7 +10,9 @@ namespace FindDriver.Api.Model.DAL.DTO
         public string Fullname { get; set; }
         [Column("username")]
         public string Username { get; set; }
+        [Column("phone_number")]
+        public string PhoneNumber { get; set; }
         [Column("password")]
-        public string? Password { get; set; }
+        public string Password { get; set; }
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace FindDriver.Domain.Interfaces
+﻿using System.Linq.Expressions;
+
+namespace FindDriver.Domain.Interfaces
 {
     public interface IRepository<TEntity> where TEntity : class
     {
@@ -19,6 +21,12 @@
         /// <param name="keyValues"></param>
         /// <returns></returns>
         Task<TEntity> FindAsync(params object[] keyValues);
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="expression"></param>
+        /// <returns></returns>
+        Task<IList<TEntity>> FindAllAsync(Expression<Func<TEntity, bool>> expression);
         /// <summary>
         /// 
         /// </summary>

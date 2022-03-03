@@ -1,8 +1,8 @@
-﻿using FindDriver.Api.Model.Services;
-using FindDriver.Api.View;
+﻿using FindDriver.Api.Model.DAL.UI;
+using FindDriver.Api.Model.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FindDriver.Api.Controller
+namespace FindDriver.Api.Controllers
 {
     [Route("api/[controller]/[action]")]
     public class OrderController : ControllerBase
@@ -31,6 +31,12 @@ namespace FindDriver.Api.Controller
             if (order == null)
                 throw new ApplicationException("Добавляемый заказ пустой");
             return await OrderService.CreateOrderAsync(order);
+        }
+
+        [HttpPost]
+        public async Task<IList<OrderViewModel>> GetFindedOrders([FromBody] OrderFilter filterOrder)
+        {
+            return await OrderService.FindOrdersAsync(filterOrder);
         }
 
     }

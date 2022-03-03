@@ -1,10 +1,12 @@
 ﻿using FindDriver.Api.Model.DAL.DTO;
 using FindDriver.Api.Model.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FindDriver.Api.Controller
+namespace FindDriver.Api.Controllers
 {
     [Route("api/[controller]/[action]")]
+    [Authorize]
     public class UserController : ControllerBase
     {
         IUserService UserService;
@@ -33,5 +35,6 @@ namespace FindDriver.Api.Controller
             user.Id = Guid.NewGuid();
             return await UserService.CreateUserAsync(user);
         }
+
     }
 }

@@ -1,5 +1,6 @@
 ﻿using FindDriver.Api.Model.DAL.DTO;
 using FindDriver.Api.Model.DAL.Repositories;
+using System.Linq.Expressions;
 
 namespace FindDriver.Api.Model.Services
 {
@@ -8,6 +9,7 @@ namespace FindDriver.Api.Model.Services
         Task<IList<User>> GetAllUsersAsync();
         User FindUser(Guid id);
         Task<User> FindUserAsync(Guid id);
+        Task<IList<User>> FindAllUsersAsync(Expression<Func<User, bool>> expression);
         Task<User> CreateUserAsync(User newUser);
         Task<User> UpdateUserAsync(Guid updateUserId, User user);
         Task DeleteUserAsync(User user);
@@ -45,13 +47,17 @@ namespace FindDriver.Api.Model.Services
             updUser.Fullname = user.Fullname;
             updUser.Username = user.Username;
             updUser.Password = user.Password;
-
             await (_userRepository as UserRepository).DbContext.SaveChangesAsync();
             return updUser;
         }
         public async Task DeleteUserAsync(User user)
         {
             await _userRepository.DeleteAsync(user);
+        }
+
+        public async Task<IList<User>> FindAllUsersAsync(Expression<Func<User, bool>> expression)
+        {
+            return await _userRepository.FindAllAsync(expression);
         }
     }
 }

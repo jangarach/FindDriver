@@ -25,6 +25,10 @@ namespace FindDriver.Model
             {
                 entity.ToTable("cities", schema: "main");
             });
+            builder.Entity<OrderType>(entity =>
+            {
+                entity.ToTable("order_types", schema: "main");
+            });
         }
     }
 }

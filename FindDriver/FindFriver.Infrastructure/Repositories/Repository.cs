@@ -1,5 +1,6 @@
 ﻿using FindDriver.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace FindFriver.Infrastructure
 {
@@ -68,6 +69,11 @@ namespace FindFriver.Infrastructure
             {
                 await DbContext.SaveChangesAsync();
             }
+        }
+
+        public async Task<IList<TEntity>> FindAllAsync(Expression<Func<TEntity, bool>> expression)
+        {
+            return await Entities.Where(expression).ToListAsync();
         }
     }
 }
