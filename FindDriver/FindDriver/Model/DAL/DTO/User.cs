@@ -11,7 +11,7 @@ namespace FindDriver.Api.Model.DAL.DTO
         [Column("username")]
         public string Username { get; set; }
         [Column("phone_number")]
-        public string PhoneNumber { get; set; }
+        public string? PhoneNumber { get; set; }
         [Column("password")]
         public string Password { get; set; }
     }

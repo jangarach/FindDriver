@@ -37,7 +37,7 @@ namespace FindFriver.Infrastructure
         {
             await DbContext.AddRangeAsync(entities);
             if (saveChanges)
-            {
+            { 
                 await DbContext.SaveChangesAsync();
             }
         }

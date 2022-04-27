@@ -1,4 +1,5 @@
 ﻿using FindDriver.Api.Model.DAL.DTO;
+using FindDriver.Api.Model.DAL.UI;
 using FindDriver.Api.Model.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,26 +16,16 @@ namespace FindDriver.Api.Controllers
             UserService = userService;
         }
 
-        [HttpGet]  
-        public async Task<IList<User>> GetAllUsers()
-        {
-            return await UserService.GetAllUsersAsync();
-        }
-
-        [HttpGet]
-        public async Task<User> GetUserById(Guid id)
-        {
-            return await UserService.FindUserAsync(id);
-        }
-
         [HttpPost]
-        public async Task<User> CreateUser(User user)
+        [AllowAnonymous]
+        public async Task<User?> RegistrationUser([FromBody]User user)
         {
-            if (user == null)
-                throw new ApplicationException("Добавляемый пользователь пустой");
+            if (user == null || string.IsNullOrEmpty(user.Username) 
+                || string.IsNullOrEmpty(user.Fullname) 
+                || string.IsNullOrEmpty(user.Password))
+                throw new ApplicationException("Переданные данные пустые");
             user.Id = Guid.NewGuid();
-            return await UserService.CreateUserAsync(user);
+            return await UserService.RegistrationAsync(user);
         }
-
     }
 }

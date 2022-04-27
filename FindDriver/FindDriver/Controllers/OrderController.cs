@@ -1,10 +1,13 @@
 ﻿using FindDriver.Api.Model.DAL.UI;
 using FindDriver.Api.Model.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FindDriver.Api.Controllers
 {
     [Route("api/[controller]/[action]")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class OrderController : ControllerBase
     {
         IOrderService OrderService;
@@ -14,7 +17,8 @@ namespace FindDriver.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<IList<OrderViewModel>> GetAllOrders()
+        [AllowAnonymous]
+        public async Task<IList<OrderViewModel>?> GetAllOrders()
         {
             return await OrderService.GetAllOrdersAsync();
         }
@@ -34,9 +38,16 @@ namespace FindDriver.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IList<OrderViewModel>> GetFindedOrders([FromBody] OrderFilter filterOrder)
+        [AllowAnonymous]
+        public async Task<IList<OrderViewModel>?> GetFindedOrders([FromBody] OrderFilter filterOrder)
         {
             return await OrderService.FindOrdersAsync(filterOrder);
+        }
+
+        [HttpPost]
+        public async Task<OrderViewModel?> UpdateOrder([FromBody]OrderViewModel order)
+        {
+            return await OrderService.UpdateOrderAsync(order.Id, order);
         }
 
     }

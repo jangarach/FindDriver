@@ -6,13 +6,9 @@ namespace FindDriver.Api.Model.Services
 {
     public interface IUserService
     {
-        Task<IList<User>> GetAllUsersAsync();
-        User FindUser(Guid id);
-        Task<User> FindUserAsync(Guid id);
-        Task<IList<User>> FindAllUsersAsync(Expression<Func<User, bool>> expression);
-        Task<User> CreateUserAsync(User newUser);
-        Task<User> UpdateUserAsync(Guid updateUserId, User user);
-        Task DeleteUserAsync(User user);
+        Task<User?> GetUserAsync(Expression<Func<User, bool>> expression);
+        Task<IList<User>?> GetUsersAsync(Expression<Func<User, bool>> expression);
+        Task<User?> RegistrationAsync(User user);
     }
 
     public class UserService : IUserService
@@ -22,42 +18,40 @@ namespace FindDriver.Api.Model.Services
         {
             _userRepository = userRepository;
         }
-        
-        public async Task<IList<User>> GetAllUsersAsync()
+
+        public async Task<User?> GetUserAsync(Expression<Func<User, bool>> expression)
         {
-            return await _userRepository.GetAllAsync();
-        }
-        public User FindUser(Guid id)
-        {
-            return _userRepository.Find(id);
+            if (expression == null)
+                throw new ApplicationException("Выражение для получения пользователя пустое.");
+            var result = await _userRepository.FindAllAsync(expression);
+
+            if (result == null || result.Count == 0)
+                return null;
+
+            return result.SingleOrDefault();
         }
 
-        public async Task<User> FindUserAsync(Guid id)
+        public async Task<IList<User>?> GetUsersAsync(Expression<Func<User, bool>> expression)
         {
-            return await _userRepository.FindAsync(id);
-        }
-        public async Task<User> CreateUserAsync(User newUser)
-        {
-            await _userRepository.InsertAsync(newUser);
-            return newUser;
-        }
-        public async Task<User> UpdateUserAsync(Guid updateUserId, User user)
-        {
-            var updUser = await _userRepository.FindAsync(updateUserId);
-            updUser.Fullname = user.Fullname;
-            updUser.Username = user.Username;
-            updUser.Password = user.Password;
-            await (_userRepository as UserRepository).DbContext.SaveChangesAsync();
-            return updUser;
-        }
-        public async Task DeleteUserAsync(User user)
-        {
-            await _userRepository.DeleteAsync(user);
-        }
-
-        public async Task<IList<User>> FindAllUsersAsync(Expression<Func<User, bool>> expression)
-        {
+            if (expression == null)
+                throw new ApplicationException("Выражение для получения пользователя пустое.");
             return await _userRepository.FindAllAsync(expression);
         }
+
+        public async Task<User?> RegistrationAsync(User user)
+        {
+            if (user == null || string.IsNullOrEmpty(user.Username))
+                throw new ApplicationException("Параметры для регистрации пользователя не были переданы.");
+
+            var findedUser = await _userRepository.FindAllAsync(e => e.Username == user.Username);
+
+            if (findedUser != null && findedUser.Count > 0)
+                throw new ApplicationException("Пользователь уже существует с таким именем. Измените параметры регистрации.");
+
+            await _userRepository.InsertAsync(user);
+
+            throw new NotImplementedException();
+        }
+
     }
 }

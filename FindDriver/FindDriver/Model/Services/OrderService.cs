@@ -2,18 +2,18 @@
 using FindDriver.Api.Model.DAL.DTO;
 using FindDriver.Api.Model.DAL.Repositories;
 using FindDriver.Api.Model.DAL.UI;
-using System.Linq.Expressions;
+using FindFriver.Infrastructure;
 
 namespace FindDriver.Api.Model.Services
 {
     public interface IOrderService
     {
-        Task<IList<OrderViewModel>> GetAllOrdersAsync();
+        Task<IList<OrderViewModel>?> GetAllOrdersAsync();
         OrderViewModel FindOrder(int id);
         Task<OrderViewModel> FindOrderAsync(int id);
-        Task<IList<OrderViewModel>> FindOrdersAsync(OrderFilter orderFilter);
+        Task<IList<OrderViewModel>?> FindOrdersAsync(OrderFilter orderFilter);
         Task<OrderViewModel> CreateOrderAsync(OrderViewModel newOrder);
-        Task<OrderViewModel> UpdateOrderAsync(int updateOrderId, OrderViewModel order);
+        Task<OrderViewModel?> UpdateOrderAsync(int updateOrderId, OrderViewModel order);
         Task DeleteOrderAsync(OrderViewModel order);
     }
     public class OrderService : IOrderService
@@ -34,11 +34,11 @@ namespace FindDriver.Api.Model.Services
             _orderRepository = orderRepository;
             _orderReferencesService = orderReferencesService;
         }
-        public async Task<IList<OrderViewModel>> GetAllOrdersAsync()
+        public async Task<IList<OrderViewModel>?> GetAllOrdersAsync()
         {
             var allOrders = await _orderRepository.GetAllAsync();
             if (allOrders == null || allOrders.Count == 0)
-                throw new ApplicationException("Не удалось получить список всех заказов, возможно зиписи в БД отсутствуют");
+                return default;
 
             return await MapToViewModel(allOrders); ;
         }
@@ -53,6 +53,7 @@ namespace FindDriver.Api.Model.Services
         public async Task<OrderViewModel> CreateOrderAsync(OrderViewModel newOrder)
         {
             var order = _mapper.Map<Order>(newOrder);
+            order.State = true;
             await _orderRepository.InsertAsync(order);
 
             return _mapper.Map<OrderViewModel>(order);
@@ -61,22 +62,44 @@ namespace FindDriver.Api.Model.Services
         {
             throw new NotImplementedException();
         }
-        public Task<OrderViewModel> UpdateOrderAsync(int updateOrderId, OrderViewModel order)
+        public async Task<OrderViewModel?> UpdateOrderAsync(int updateOrderId, OrderViewModel order)
         {
-            throw new NotImplementedException();
+            var findedOrders = await _orderRepository.FindAllAsync(e => e.Id == updateOrderId);
+            if (findedOrders == null || findedOrders.Count == 0)
+                return default;
+            var findedOrder = findedOrders.FirstOrDefault();
+            if (findedOrder == null)
+                return default;
+
+            findedOrder.FromCityId = order.FromCityId;
+            findedOrder.ToCityId = order.ToCityId;
+            findedOrder.Datestamp = order.DateStamp;
+            findedOrder.Dateout = order.DateOut;
+            findedOrder.Comment = order.Comment;
+            findedOrder.PassengersCount = order.PassengersCount;
+            findedOrder.OrderTypeId = order.OrderTypeId;
+            findedOrder.State = order.State;
+            findedOrder.UserId = order.UserId;
+            if (_orderRepository is Repository<Order> repository)
+                repository.DbContext.SaveChanges();
+
+            var orderViewModel = await MapToViewModel(findedOrders); 
+            return orderViewModel.FirstOrDefault();
         }
 
-        public async Task<IList<OrderViewModel>> FindOrdersAsync(OrderFilter orderFilter)
+        public async Task<IList<OrderViewModel>?> FindOrdersAsync(OrderFilter orderFilter)
         {
             var findedOrders = await _orderRepository.FindAllAsync(e =>
                 e.Dateout >= orderFilter.DateOut.Date
+                && (orderFilter.UserId != null ? e.UserId == orderFilter.UserId : true)
                 && (orderFilter.FromCityId != null ? e.FromCityId == orderFilter.FromCityId : true)
                 && (orderFilter.ToCityId != null ? e.ToCityId == orderFilter.ToCityId : true)
                 && (orderFilter.OrderTypeId != null ? e.OrderTypeId == orderFilter.OrderTypeId : true)
+                && (e.State == orderFilter.State)
             );
 
             if (findedOrders == null || findedOrders.Count == 0)
-                throw new ApplicationException("Не удалось найти список заказов!");
+                return default;
 
             return await MapToViewModel(findedOrders);
         }
@@ -94,7 +117,7 @@ namespace FindDriver.Api.Model.Services
             //Tasks
             var citiesTask = _orderReferencesService.FindAllCitiesAsync(cityIds);
             var orderTypesTask = _orderReferencesService.GetAllOrderTypes();
-            var usersTask = _userService.FindAllUsersAsync(e => userIds.Contains(e.Id));
+            var usersTask = _userService.GetUsersAsync(e => userIds.Contains(e.Id));
 
             await Task.WhenAll(citiesTask, orderTypesTask, usersTask);
 
@@ -112,23 +135,23 @@ namespace FindDriver.Api.Model.Services
         {
             orderViewModels.ForEach(e =>
             {
-                var orderType = OrderTypes.FirstOrDefault(c => c.Id == e.OrderTypeId);
+                var orderType = OrderTypes?.FirstOrDefault(c => c.Id == e.OrderTypeId);
                 if (orderType != null)
                     e.OrderTypeName = orderType.TypeName;
 
-                var fromCity = Cities.FirstOrDefault(c => c.Id == e.FromCityId);
+                var fromCity = Cities?.FirstOrDefault(c => c.Id == e.FromCityId);
                 if (fromCity != null)
                     e.FromCityName = fromCity.Name;
 
-                var toCity = Cities.FirstOrDefault(c => c.Id == e.ToCityId);
+                var toCity = Cities?.FirstOrDefault(c => c.Id == e.ToCityId);
                 if (toCity != null)
                     e.ToCityName = toCity.Name;
 
-                var user = Users.FirstOrDefault(c => c.Id == e.UserId);
+                var user = Users?.FirstOrDefault(c => c.Id == e.UserId);
                 if (user != null)
                 {
-                    e.UserName = user.Username;
-                    e.UserPhoneNumber = user.PhoneNumber;
+                    e.FullName = user.Fullname;
+                    e.PhoneNumber = user.PhoneNumber;
                 }
             });
         }

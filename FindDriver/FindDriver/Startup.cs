@@ -10,6 +10,9 @@ using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Identity;
 using System.Reflection;
 using System.Text;
+using FindDriver.Api;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace FindDriver
 {
@@ -22,12 +25,12 @@ namespace FindDriver
         public IConfigurationRoot Configuration { get; }
         public override void ConfigureServices(IServiceCollection services)
         {
-            services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
+            services
+                .AddAuthentication(options =>
+                {
+                    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                })
+                .AddCookie()
                 .AddJwtBearer(options =>
                 {
                     options.TokenValidationParameters = new TokenValidationParameters
@@ -49,14 +52,6 @@ namespace FindDriver
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration["Jwt:key"])),
                         // валидация ключа безопасности
                         ValidateIssuerSigningKey = true
-                    };
-                })
-                .AddCookie(options =>
-                {
-                    options.Events.OnRedirectToLogin = options.Events.OnRedirectToAccessDenied = context =>
-                    {
-                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                        return Task.CompletedTask;
                     };
                 })
                 .AddGoogle(options =>
@@ -128,13 +123,23 @@ namespace FindDriver
         }
         public override void Configure(IApplicationBuilder app)
         {
+            var webApp = app as WebApplication;
             // Configure the HTTP request pipeline.
-            if (app is WebApplication webApp && webApp.Environment.IsDevelopment())
+            if (webApp  != null && webApp.Environment.IsDevelopment())
             {
+                app.UseExceptionHandler("/error-development");
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
             app.UseHttpsRedirection();
+
+            if (webApp != null)
+            {
+                if (!webApp.Environment.IsDevelopment())
+                {
+                    app.UseExceptionHandler("/error");
+                }
+            }
 
             app.UseRouting();
 
@@ -161,6 +166,7 @@ namespace FindDriver
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IOrderService, OrderService>();
             services.AddScoped<IOrderReferencesService, OrderReferencesService>();
+            services.AddScoped<IAuthService, AuthService>();
         }
 
         private void RegisterRepositories(IServiceCollection services)
